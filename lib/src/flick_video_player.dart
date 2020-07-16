@@ -83,7 +83,7 @@ class _FlickVideoPlayerState extends State<FlickVideoPlayer> {
 
   @override
   void dispose() {
-    flickManager.flickControlManager.removeListener(listener);
+    if(!_isFullscreen) flickManager.flickControlManager.removeListener(listener);
     Wakelock.disable();
     super.dispose();
   }
