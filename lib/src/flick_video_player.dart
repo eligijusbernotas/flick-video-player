@@ -93,13 +93,37 @@ class _FlickVideoPlayerState extends State<FlickVideoPlayer> {
   void listener() async {
     if (flickManager.flickControlManager.isFullscreen && !_isFullscreen) {
       _switchToFullscreen();
-    } else if (_isFullscreen &&
-        !flickManager.flickControlManager.isFullscreen) {
+    } else if (_isFullscreen && !flickManager.flickControlManager.isFullscreen) {
       _exitFullscreen();
     }
   }
 
-  _switchToFullscreen() {
+  Widget _buildFullScreenVideo() {
+    return Scaffold(
+      body: FlickManagerBuilder(
+        flickManager: flickManager,
+        child: widget.flickVideoWithControlsFullscreen ?? widget.flickVideoWithControls,
+      ),
+    );
+  }
+
+  AnimatedWidget _defaultRoutePageBuilder(Animation<double> animation) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (BuildContext context, Widget child) {
+        return _buildFullScreenVideo();
+      },
+    );
+  }
+
+  Widget _fullScreenRoutePageBuilder(Animation<double> animation) {
+    // if (widget.controller.routePageBuilder == null) {
+    return _defaultRoutePageBuilder(animation);
+    // }
+    // return widget.controller.routePageBuilder(context, animation, secondaryAnimation, controllerProvider);
+  }
+
+  _switchToFullscreen() async {
     /// Disable previous wakelock setting.
     Wakelock.disable();
 
@@ -110,17 +134,22 @@ class _FlickVideoPlayerState extends State<FlickVideoPlayer> {
     _isFullscreen = true;
     _setPreferredOrientation();
     _setSystemUIOverlays();
-    _overlayEntry = OverlayEntry(builder: (context) {
-      return Scaffold(
-        body: FlickManagerBuilder(
-          flickManager: flickManager,
-          child: widget.flickVideoWithControlsFullscreen ??
-              widget.flickVideoWithControls,
-        ),
-      );
-    });
 
-    Overlay.of(context).insert(_overlayEntry);
+    final TransitionRoute<Null> route = PageRouteBuilder<Null>(
+      pageBuilder: (_, animation, __) => _fullScreenRoutePageBuilder(animation),
+    );
+
+    await Navigator.of(context, rootNavigator: true).push(route);
+    // _overlayEntry = OverlayEntry(builder: (context) {
+    //   return Scaffold(
+    //     body: FlickManagerBuilder(
+    //       flickManager: flickManager,
+    //       child: widget.flickVideoWithControlsFullscreen ?? widget.flickVideoWithControls,
+    //     ),
+    //   );
+    // });
+
+    // Overlay.of(context).insert(_overlayEntry);
   }
 
   _exitFullscreen() {
@@ -133,16 +162,17 @@ class _FlickVideoPlayerState extends State<FlickVideoPlayer> {
 
     _isFullscreen = false;
 
-    _overlayEntry?.remove();
-    _overlayEntry = null;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    // _overlayEntry?.remove();
+    // _overlayEntry = null;
     _setPreferredOrientation();
     _setSystemUIOverlays();
   }
 
   _setPreferredOrientation() {
     if (_isFullscreen) {
-      SystemChrome.setPreferredOrientations(
-          widget.preferredDeviceOrientationFullscreen);
+      SystemChrome.setPreferredOrientations(widget.preferredDeviceOrientationFullscreen);
     } else {
       SystemChrome.setPreferredOrientations(widget.preferredDeviceOrientation);
     }
