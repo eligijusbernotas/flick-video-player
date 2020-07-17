@@ -83,7 +83,9 @@ class _FlickVideoPlayerState extends State<FlickVideoPlayer> {
 
   @override
   void dispose() {
-    if(!_isFullscreen) flickManager.flickControlManager.removeListener(listener);
+    if (!_isFullscreen) {
+      flickManager.flickControlManager.removeListener(listener);
+    }
     Wakelock.disable();
     super.dispose();
   }
@@ -92,13 +94,28 @@ class _FlickVideoPlayerState extends State<FlickVideoPlayer> {
   // Pushes the full-screen if [FlickControlManager] is changed to full-screen.
   void listener() async {
     if (flickManager.flickControlManager.isFullscreen && !_isFullscreen) {
-      _switchToFullscreen();
+      _switchToFullscreen(context);
     } else if (_isFullscreen && !flickManager.flickControlManager.isFullscreen) {
-      _exitFullscreen();
+      Wakelock.disable();
+
+      if (widget.wakelockEnabled) {
+        Wakelock.enable();
+      }
+
+      _isFullscreen = false;
+      // Navigator.of(flickManager.context, rootNavigator: true).pop();
+
+      // _overlayEntry?.remove();
+      // _overlayEntry = null;
+      _setPreferredOrientation();
+      _setSystemUIOverlays();
     }
   }
 
-  Widget _buildFullScreenVideo() {
+  Widget _buildFullScreenVideo(
+    BuildContext context,
+    Animation<double> animation,
+  ) {
     return Scaffold(
       body: FlickManagerBuilder(
         flickManager: flickManager,
@@ -107,23 +124,23 @@ class _FlickVideoPlayerState extends State<FlickVideoPlayer> {
     );
   }
 
-  AnimatedWidget _defaultRoutePageBuilder(Animation<double> animation) {
+  AnimatedWidget _defaultRoutePageBuilder(BuildContext context, Animation<double> animation) {
     return AnimatedBuilder(
       animation: animation,
       builder: (BuildContext context, Widget child) {
-        return _buildFullScreenVideo();
+        return _buildFullScreenVideo(context, animation);
       },
     );
   }
 
-  Widget _fullScreenRoutePageBuilder(Animation<double> animation) {
+  Widget _fullScreenRoutePageBuilder(BuildContext context, Animation<double> animation) {
     // if (widget.controller.routePageBuilder == null) {
-    return _defaultRoutePageBuilder(animation);
+    return _defaultRoutePageBuilder(context, animation);
     // }
     // return widget.controller.routePageBuilder(context, animation, secondaryAnimation, controllerProvider);
   }
 
-  _switchToFullscreen() async {
+  _switchToFullscreen(BuildContext context) async {
     /// Disable previous wakelock setting.
     Wakelock.disable();
 
@@ -136,7 +153,7 @@ class _FlickVideoPlayerState extends State<FlickVideoPlayer> {
     _setSystemUIOverlays();
 
     final TransitionRoute<Null> route = PageRouteBuilder<Null>(
-      pageBuilder: (_, animation, __) => _fullScreenRoutePageBuilder(animation),
+      pageBuilder: (_, animation, __) => _fullScreenRoutePageBuilder(context, animation),
     );
 
     await Navigator.of(context, rootNavigator: true).push(route);
@@ -161,8 +178,7 @@ class _FlickVideoPlayerState extends State<FlickVideoPlayer> {
     }
 
     _isFullscreen = false;
-
-    Navigator.of(context, rootNavigator: true).pop();
+    Navigator.of(flickManager.context, rootNavigator: true).pop();
 
     // _overlayEntry?.remove();
     // _overlayEntry = null;
